@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#b91c1c">
+<title>Baixa por CTRC</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:"Segoe UI",Roboto,Arial,sans-serif;background:#fff;color:#111827;max-width:520px;margin:0 auto}
+  .tela{display:none;min-height:100vh;flex-direction:column}
+  .tela.ativa{display:flex}
+  .top{background:#b91c1c;color:#fff;padding:14px 16px}
+  .top b{font-size:17px;display:block}
+  .top small{font-size:12px;opacity:.9}
+  .corpo{padding:16px;flex:1;display:flex;flex-direction:column;gap:10px}
+  .lbl{font-size:13px;color:#374151;font-weight:700;margin-top:4px}
+  .lbl i{color:#b91c1c;font-style:normal}
+  input.inp{border:1.5px solid #d1d5db;border-radius:10px;padding:13px 12px;font-size:17px;width:100%;outline:none}
+  input.inp:focus{border-color:#b91c1c}
+  input.inp.ok{border-color:#16a34a}
+  .dica{font-size:12px;color:#6b7280;margin-top:-4px}
+  .dica.ok{color:#166534}.dica.err{color:#b91c1c}
+  .btn{background:#b91c1c;color:#fff;border:0;border-radius:12px;padding:15px;text-align:center;font-weight:700;font-size:16px;width:100%}
+  .btn:disabled{opacity:.45}
+  .logo{width:72px;height:72px;border-radius:20px;background:#fee2e2;margin:36px auto 6px;display:flex;align-items:center;justify-content:center}
+  .erro{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;font-size:13px;display:none;line-height:1.4}
+  .aviso{background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:13px;display:none}
+  /* unidades */
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #d1d5db;background:#fff;border-radius:22px;padding:10px 18px;font-size:15px;font-weight:700;color:#374151}
+  .chip.sel{border-color:#b91c1c;background:#b91c1c;color:#fff}
+  /* ocorrências */
+  .srch{display:flex;align-items:center;gap:8px;border:1.5px solid #d1d5db;border-radius:10px;padding:0 10px}
+  .srch:focus-within{border-color:#b91c1c}
+  .srch input{border:0;outline:none;font-size:16px;padding:11px 0;flex:1;min-width:0}
+  .srch button{background:none;border:0;color:#9ca3af;font-size:16px;padding:6px}
+  .cnt{font-size:12px;color:#6b7280}
+  .lista{display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-height:150px;max-height:38vh;padding-bottom:4px}
+  .oc{display:flex;align-items:center;gap:10px;border:1.5px solid #e5e7eb;border-radius:10px;padding:8px 10px;background:#fff;text-align:left;width:100%;flex:none}
+  .oc .r{width:18px;height:18px;border-radius:50%;border:2px solid #9ca3af;flex:none}
+  .oc .cd{background:#f3f4f6;font-weight:700;font-size:13px;border-radius:6px;padding:3px 7px;flex:none}
+  .oc .ds{font-size:13px;line-height:1.25}
+  .oc.sel{border-color:#b91c1c;background:#fef2f2}
+  .oc.sel .r{border:6px solid #b91c1c}
+  .oc.sel .cd{background:#b91c1c;color:#fff}
+  .oc.sel .ds{font-weight:700}
+  .vazio{font-size:13px;color:#6b7280;text-align:center;padding:20px}
+  .gps{font-size:12px;color:#6b7280;display:flex;align-items:center;gap:6px}
+  .gps .p{width:8px;height:8px;border-radius:50%;background:#9ca3af}
+  .gps.ok .p{background:#16a34a}.gps.ruim .p{background:#dc2626}
+  /* fim */
+  .big{width:104px;height:104px;border-radius:50%;margin:30px auto 10px;display:flex;align-items:center;justify-content:center}
+  .c{text-align:center}
+  .muted{font-size:13px;color:#6b7280;text-align:center}
+  .card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:11px 13px}
+  .card .k{font-size:12px;color:#6b7280}
+  .card .v{font-size:15px;font-weight:600}
+  .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px}
+  .carregando{position:fixed;inset:0;background:rgba(255,255,255,.8);display:none;align-items:center;justify-content:center;font-weight:600;z-index:9;padding:20px;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- ============ LOCALIZAÇÃO OBRIGATÓRIA ============ -->
+<section id="t-gps" class="tela">
+  <div class="corpo" style="text-align:center">
+    <div class="logo"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
+    <div style="font-size:20px;font-weight:700">Localização obrigatória</div>
+    <div style="font-size:14px;color:#374151;line-height:1.45;margin:6px 0 4px">
+      Para registrar baixas, o app usa a <b>localização atual e precisa</b> do celular no momento de cada baixa.
+      Ela é capturada automaticamente pelo GPS e não pode ser alterada.
+    </div>
+    <div style="font-size:13px;color:#6b7280;line-height:1.4">Quando o celular perguntar, toque em <b>Permitir</b> e escolha <b>Localização precisa</b>.</div>
+    <div id="gps-msg" class="erro" style="text-align:left"></div>
+    <div style="flex:1;min-height:24px"></div>
+    <button class="btn" id="btn-gps">Concordo e permitir localização</button>
+  </div>
+</section>
+
+<!-- ============ FORMULÁRIO DA BAIXA ============ -->
+<section id="t-form" class="tela">
+  <div class="top"><b>Baixa por CTRC</b><small id="resumo">—</small></div>
+  <div class="corpo">
+    <div class="lbl">CTRC <i>*</i></div>
+    <input id="ctrc" class="inp" maxlength="14" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Ex.: SAO183849-1">
+    <div id="ctrc-dica" class="dica">3 letras, número, hífen e dígito</div>
+    <div id="dup-aviso" class="aviso"></div>
+
+    <div class="lbl">Unidade da baixa <i>*</i></div>
+    <div class="chips" id="unidades"></div>
+
+    <div class="lbl">Ocorrência <i>*</i></div>
+    <div class="srch">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input id="busca" placeholder="Buscar por nome ou número" autocomplete="off">
+      <button id="btn-limpar" aria-label="Limpar">✕</button>
+    </div>
+    <div class="cnt" id="cnt"></div>
+    <div class="lista" id="lista"></div>
+
+    <div class="gps" id="gps-status"><span class="p"></span><span id="gps-txt">Localização: buscando…</span></div>
+    <div id="form-erro" class="erro"></div>
+    <button id="btn-enviar" class="btn" disabled>Enviar baixa</button>
+  </div>
+</section>
+
+<!-- ============ ENVIADO ============ -->
+<section id="t-fim" class="tela">
+  <div class="corpo">
+    <div class="big" id="fim-icone"></div>
+    <div class="c" style="font-size:22px;font-weight:700" id="fim-titulo">Baixa enviada!</div>
+    <div class="muted" style="margin-bottom:10px" id="fim-sub"></div>
+    <div class="card"><div class="k">CTRC</div><div class="v" id="fim-ctrc"></div></div>
+    <div class="card"><div class="k">Unidade da baixa</div><div class="v" id="fim-uni"></div></div>
+    <div class="card"><div class="k">Ocorrência</div><div class="v" id="fim-oco"></div></div>
+    <div class="card"><div class="k">Status</div><div class="v" id="fim-status"></div></div>
+    <div style="flex:1;min-height:20px"></div>
+    <button class="btn" id="btn-nova">Nova baixa</button>
+  </div>
+</section>
+
+<div class="carregando" id="carregando">Aguarde…</div>
+
+<script>
+/* ===================== CONFIGURAÇÃO ===================== */
+// URL da implantação do Apps Script (Implantar > Gerenciar implantações > URL do app da Web)
+const API_URL = 'COLE_AQUI_O_LINK_DO_NOVO_APPS_SCRIPT';   // ex.: https://script.google.com/macros/s/XXXX/exec
+const LIMITE_PRECISAO_M = 1000;   // pior que isso = localização aproximada (não envia)
+const RE_CTRC = /^([A-Z]{3})(\d{1,9})-?(\d)$/;
+
+/* ===================== ESTADO ===================== */
+const K = { LISTAS: 'erv_listas_v6', FILA: 'erv_fila_v6', DISP: 'erv_dispositivo', UNI: 'erv_ultima_unidade', HOJE: 'erv_hoje' };
+const ls = {
+  get(k, def) { try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch (e) { return def; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+const $ = (id) => document.getElementById(id);
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+let dispositivo = ls.get(K.DISP, null);
+if (!dispositivo) { dispositivo = uuid(); ls.set(K.DISP, dispositivo); }
+
+let listas = ls.get(K.LISTAS, { ocorrencias: [], unidades: [] });
+let unidadeSel = ls.get(K.UNI, null);
+let ocoSel = null;
+let ctrcValido = null;
+let gpsAtual = null, gpsPromessa = null;
+
+/* ===================== SERVIDOR ===================== */
+async function api(acao, ...args) {
+  if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(API_URL)) throw new Error('App não configurado: falta o link do Apps Script no index.html (API_URL).');
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 25000);
+  let resp;
+  try {
+    resp = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ acao, args }),
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow', signal: ctrl.signal });
+  } catch (e) {
+    throw new Error('NetworkError: ' + (e.name === 'AbortError' ? 'timeout' : e.message));
+  } finally { clearTimeout(t); }
+  let dados;
+  try { dados = await resp.json(); } catch (e) { throw new Error('NetworkError: resposta inválida do servidor'); }
+  if (!dados.ok) throw new Error(dados.erro || 'Erro no servidor');
+  return dados.resultado;
+}
+const erroDeRede = (e) => !navigator.onLine || /NetworkError|network|Failed to fetch|timeout/i.test(String(e && e.message || e));
+
+/* ===================== NAVEGAÇÃO ===================== */
+function mostrar(id) {
+  document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+  $(id).classList.add('ativa');
+  window.scrollTo(0, 0);
+}
+function carregando(on, txt) { $('carregando').textContent = txt || 'Aguarde…'; $('carregando').style.display = on ? 'flex' : 'none'; }
+function erro(id, msg) { const el = $(id); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+
+/* ===================== LISTAS (guardadas no celular) ===================== */
+async function atualizarListas() {
+  try {
+    const l = await api('carregarListas');
+    if (l && l.ocorrencias && l.unidades) { listas = l; ls.set(K.LISTAS, l); }
+  } catch (e) { /* sem internet: usa a cópia do aparelho */ }
+  pintarUnidades(); pintarLista();
+}
+
+/* ===================== CTRC ===================== */
+function normalizarCtrc(t) {
+  const m = String(t || '').toUpperCase().replace(/\s/g, '').match(RE_CTRC);
+  return m ? m[1] + m[2] + '-' + m[3] : null;
+}
+let timerDup = null;
+$('ctrc').addEventListener('input', (e) => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  ctrcValido = normalizarCtrc(e.target.value);
+  const vazio = !e.target.value;
+  e.target.classList.toggle('ok', !!ctrcValido);
+  $('ctrc-dica').className = 'dica' + (ctrcValido ? ' ok' : vazio ? '' : ' err');
+  $('ctrc-dica').textContent = ctrcValido ? '✓ CTRC ' + ctrcValido : vazio ? '3 letras, número, hífen e dígito' : 'Formato: SAO183849-1 (3 letras, número, hífen e dígito)';
+  $('dup-aviso').style.display = 'none';
+  clearTimeout(timerDup);
+  if (ctrcValido) timerDup = setTimeout(() => verificarDuplicidade(ctrcValido), 600);
+  atualizarBotao();
+});
+$('ctrc').addEventListener('blur', () => { if (ctrcValido) $('ctrc').value = ctrcValido; });
+
+async function verificarDuplicidade(ctrc) {
+  const local = fila().find(i => i.ctrc === ctrc);
+  if (local) return avisoDup('Este CTRC já foi registrado neste aparelho (' + local.ocorrencia + ') e aguarda envio.');
+  if (!navigator.onLine) return;
+  try {
+    const ja = await api('consultarCtrc', ctrc);
+    if (ja.length && ctrcValido === ctrc)
+      avisoDup('Atenção: este CTRC já tem registro — ' + ja.map(b => b.ocorrencia + ' em ' + b.quando + ' (' + b.unidade + ')').join('; '));
+  } catch (e) {}
+}
+function avisoDup(msg) { $('dup-aviso').textContent = msg; $('dup-aviso').style.display = 'block'; }
+
+/* ===================== UNIDADE ===================== */
+function pintarUnidades() {
+  const box = $('unidades'); box.innerHTML = '';
+  if (!listas.unidades.length) { box.innerHTML = '<div class="vazio" style="padding:6px">Unidades ainda não baixadas. Conecte-se à internet.</div>'; return; }
+  if (unidadeSel && !listas.unidades.some(u => u.s === unidadeSel)) unidadeSel = null;
+  listas.unidades.forEach(u => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (u.s === unidadeSel ? ' sel' : '');
+    b.textContent = u.s; if (u.n) b.title = u.n;
+    b.onclick = () => { unidadeSel = u.s; ls.set(K.UNI, u.s); pintarUnidades(); atualizarBotao(); };
+    box.appendChild(b);
+  });
+}
+
+/* ===================== OCORRÊNCIA ===================== */
+const normalizar = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+function pintarLista() {
+  const ocs = listas.ocorrencias;
+  const termo = normalizar($('busca').value.trim());
+  const filtradas = !termo ? ocs : ocs.filter(o =>
+    /^\d+$/.test(termo) ? o.c.indexOf(termo) === 0 || o.c === termo.padStart(2, '0')
+                        : normalizar(o.c + ' ' + o.d).indexOf(termo) >= 0);
+  $('cnt').textContent = termo ? (filtradas.length + ' de ' + ocs.length + ' ocorrências encontradas') : (ocs.length + ' ocorrências');
+  const lista = $('lista'); lista.innerHTML = '';
+  if (!ocs.length) { lista.innerHTML = '<div class="vazio">Lista de ocorrências ainda não baixada. Conecte-se à internet uma vez.</div>'; return; }
+  if (!filtradas.length) { lista.innerHTML = '<div class="vazio">Nenhuma ocorrência encontrada.</div>'; return; }
+  filtradas.forEach(o => {
+    const b = document.createElement('button');
+    b.className = 'oc' + (ocoSel && ocoSel.c === o.c ? ' sel' : '');
+    b.innerHTML = '<span class="r"></span><span class="cd"></span><span class="ds"></span>';
+    b.querySelector('.cd').textContent = o.c;
+    b.querySelector('.ds').textContent = o.d;
+    b.onclick = () => { ocoSel = o; pintarLista(); atualizarBotao(); };
+    lista.appendChild(b);
+  });
+}
+$('busca').addEventListener('input', pintarLista);
+$('btn-limpar').onclick = () => { $('busca').value = ''; pintarLista(); $('busca').focus(); };
+
+function atualizarBotao() { $('btn-enviar').disabled = !(ctrcValido && unidadeSel && ocoSel); }
+
+/* ===================== LOCALIZAÇÃO (obrigatória e precisa) ===================== */
+function obterLocalizacao(maxMs) {
+  return new Promise((ok, falha) => {
+    if (!('geolocation' in navigator)) return falha({ code: 0 });
+    let melhor = null, fim = false, id = null;
+    const terminar = () => { if (fim) return; fim = true; if (id !== null) navigator.geolocation.clearWatch(id); melhor ? ok(melhor) : falha({ code: 3 }); };
+    id = navigator.geolocation.watchPosition((p) => {
+      const g = { lat: p.coords.latitude, lng: p.coords.longitude, precisao: Math.round(p.coords.accuracy), em: Date.now() };
+      if (!melhor || g.precisao < melhor.precisao) melhor = g;
+      mostrarGps(melhor);
+      if (melhor.precisao <= 30) terminar();
+    }, (e) => { if (e.code === 1) { fim = true; navigator.geolocation.clearWatch(id); falha(e); } },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: maxMs });
+    setTimeout(terminar, maxMs);
+  });
+}
+function mostrarGps(g) {
+  const ok = g && g.precisao <= LIMITE_PRECISAO_M;
+  $('gps-status').className = 'gps ' + (g ? (ok ? 'ok' : 'ruim') : '');
+  $('gps-txt').textContent = !g ? 'Localização: buscando…' : ok ? 'Localização precisa (±' + g.precisao + ' m)' : 'Localização aproximada (±' + g.precisao + ' m) — ative a localização precisa';
+}
+let gpsBuscando = false;
+function buscarGps() {
+  if (gpsBuscando) return gpsPromessa;           // já existe uma busca em andamento: reaproveita
+  gpsBuscando = true;
+  gpsPromessa = obterLocalizacao(20000)
+    .then(g => (gpsAtual = g))
+    .catch(e => { gpsAtual = null; throw e; })
+    .finally(() => { gpsBuscando = false; });
+  gpsPromessa.catch(() => {});
+  return gpsPromessa;
+}
+function textoAjudaGps(codigo) {
+  return codigo === 1
+    ? 'A localização foi bloqueada. Toque no cadeado ao lado do endereço (ou ⋮ > Configurações do site) > Localização > Permitir. No Android, confira também em Configurações > Localização se "Usar localização precisa" está ativado.'
+    : 'Não foi possível obter sua localização. Ative a Localização (GPS) do celular, de preferência ao ar livre, e tente de novo.';
+}
+async function exigirLocalizacao() {
+  try {
+    const st = await navigator.permissions.query({ name: 'geolocation' });
+    if (st.state === 'granted') return true;
+    erro('gps-msg', st.state === 'denied' ? textoAjudaGps(1) : '');
+  } catch (e) {}
+  mostrar('t-gps');
+  return false;
+}
+$('btn-gps').onclick = async () => {
+  erro('gps-msg');
+  carregando(true, 'Obtendo sua localização…');
+  try {
+    const g = await obterLocalizacao(20000);
+    if (g.precisao > LIMITE_PRECISAO_M) throw { code: 'aprox', precisao: g.precisao };
+    gpsAtual = g; abrirFormulario();
+  } catch (e) {
+    erro('gps-msg', e.code === 'aprox'
+      ? 'Sua localização está aproximada (±' + e.precisao + ' m). Ative "Usar localização precisa" nas configurações de localização do celular e permita localização precisa para este app.'
+      : textoAjudaGps(e.code));
+  } finally { carregando(false); }
+};
+
+/* ===================== ENVIO + FILA OFFLINE ===================== */
+const fila = () => ls.get(K.FILA, []);
+const salvarFila = (f) => ls.set(K.FILA, f);
+
+$('btn-enviar').onclick = async () => {
+  if ($('btn-enviar').disabled) return;
+  erro('form-erro');
+  carregando(true, 'Obtendo sua localização…');
+  let gps = gpsAtual && Date.now() - gpsAtual.em < 60000 && gpsAtual.precisao <= LIMITE_PRECISAO_M ? gpsAtual : null;
+  if (!gps) {
+    try { gps = await buscarGps(); }
+    catch (e) {
+      carregando(false);
+      if (e && e.code === 1) { erro('gps-msg', textoAjudaGps(1)); mostrar('t-gps'); return; }
+      return erro('form-erro', textoAjudaGps(e && e.code) + ' A baixa não foi enviada.');
+    }
+  }
+  if (gps.precisao > LIMITE_PRECISAO_M) {
+    carregando(false); buscarGps();
+    return erro('form-erro', 'Sua localização está aproximada (±' + gps.precisao + ' m). Ative "Usar localização precisa" no celular e toque em Enviar de novo. A baixa não foi enviada.');
+  }
+  const item = {
+    id: uuid(), dispositivo,
+    ctrc: ctrcValido, unidade: unidadeSel,
+    ocorrencia: ocoSel.c, ocorrenciaDesc: ocoSel.d,
+    registradoEm: new Date().toISOString(),
+    lat: gps.lat, lng: gps.lng, precisao: gps.precisao,
+  };
+  const f = fila(); f.push(item); salvarFila(f);   // 1º grava no aparelho
+  carregando(true, 'Enviando…');
+  const r = await enviarItem(item);                 // 2º tenta enviar
+  carregando(false);
+  mostrarFim(item, r);
+};
+
+async function enviarItem(item) {
+  try {
+    await api('registrarBaixa', item);
+    salvarFila(fila().filter(i => i.id !== item.id));
+    contarHoje();
+    return 'enviado';
+  } catch (e) {
+    if (erroDeRede(e)) return 'pendente';
+    salvarFila(fila().filter(i => i.id !== item.id));   // recusada pelo servidor: informa e tira da fila
+    item.erro = e.message;
+    return 'recusado';
+  }
+}
+function contarHoje() {
+  const hoje = new Date().toDateString(), h = ls.get(K.HOJE, { d: hoje, n: 0 });
+  ls.set(K.HOJE, h.d === hoje ? { d: hoje, n: h.n + 1 } : { d: hoje, n: 1 });
+}
+let sincronizando = false;
+async function sincronizar() {
+  if (sincronizando || !navigator.onLine) return;
+  sincronizando = true;
+  try {
+    for (const item of fila()) { if ((await enviarItem(item)) === 'pendente') break; }
+  } finally { sincronizando = false; pintarResumo(); }
+}
+function pintarResumo() {
+  const hoje = new Date().toDateString(), h = ls.get(K.HOJE, { d: hoje, n: 0 });
+  const n = h.d === hoje ? h.n : 0, pend = fila().length;
+  $('resumo').textContent = n + ' enviadas hoje · ' + pend + (pend === 1 ? ' pendente' : ' pendentes') + (navigator.onLine ? '' : ' · sem internet');
+}
+window.addEventListener('online', () => { sincronizar(); atualizarListas(); });
+window.addEventListener('offline', pintarResumo);
+setInterval(sincronizar, 30000);
+
+function mostrarFim(item, r) {
+  const ok = r === 'enviado', pend = r === 'pendente';
+  $('fim-icone').style.background = ok ? '#dcfce7' : pend ? '#fef3c7' : '#fee2e2';
+  $('fim-icone').innerHTML = ok
+    ? '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+    : pend ? '<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+           : '<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="3"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  $('fim-titulo').textContent = ok ? 'Baixa enviada!' : pend ? 'Salvo no aparelho' : 'Baixa não aceita';
+  const hora = new Date(item.registradoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  $('fim-sub').textContent = ok ? 'Registrada às ' + hora + ' com localização (±' + item.precisao + ' m)'
+                         : pend ? 'Será enviada automaticamente quando houver internet' : item.erro;
+  $('fim-ctrc').textContent = item.ctrc;
+  $('fim-uni').textContent = item.unidade;
+  $('fim-oco').textContent = item.ocorrencia + ' - ' + item.ocorrenciaDesc;
+  $('fim-status').innerHTML = ok ? '<span class="tag" style="background:#dcfce7;color:#166534">ENVIADO</span> &nbsp;aguardando SSW'
+                            : pend ? '<span class="tag" style="background:#fef3c7;color:#92400e">PENDENTE</span> &nbsp;na fila do aparelho'
+                                   : '<span class="tag" style="background:#fee2e2;color:#991b1b">RECUSADO</span>';
+  $('btn-nova').textContent = ok || pend ? 'Nova baixa' : 'Corrigir e tentar de novo';
+  $('btn-nova').dataset.manter = ok || pend ? '' : '1';
+  mostrar('t-fim');
+}
+$('btn-nova').onclick = () => {
+  if (!$('btn-nova').dataset.manter) {               // nova baixa: limpa CTRC e ocorrência, mantém a unidade
+    $('ctrc').value = ''; ctrcValido = null; ocoSel = null; $('busca').value = '';
+    $('ctrc').classList.remove('ok'); $('ctrc-dica').className = 'dica'; $('ctrc-dica').textContent = '3 letras, número, hífen e dígito';
+    $('dup-aviso').style.display = 'none';
+  }
+  abrirFormulario();
+};
+
+function abrirFormulario() {
+  pintarResumo(); pintarUnidades(); pintarLista(); atualizarBotao(); erro('form-erro');
+  mostrar('t-form');
+  buscarGps();
+  setTimeout(() => { if (!ctrcValido) $('ctrc').focus(); }, 150);
+}
+
+/* ===================== INÍCIO ===================== */
+(async function iniciar() {
+  pintarUnidades(); pintarLista();
+  if (await exigirLocalizacao()) abrirFormulario();
+  await atualizarListas();
+  sincronizar();
+})();
+
+/* ===================== APP INSTALÁVEL / OFFLINE ===================== */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
