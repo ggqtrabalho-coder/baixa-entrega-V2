@@ -43,7 +43,8 @@
   .painel-topo button{background:none;border:0;font-size:22px;color:#6b7280;padding:2px 6px}
   .uni-lista{overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:120px}
   .uni{display:flex;align-items:center;gap:10px;border:1.5px solid #e5e7eb;border-radius:10px;padding:11px 12px;background:#fff;text-align:left;width:100%;flex:none;font-size:14px}
-  .uni .sg{font-weight:700;min-width:44px}
+  .uni .sg{font-weight:700;min-width:44px;flex:none}
+  .uni .nm{line-height:1.25}
   .uni .nm{color:#4b5563}
   .uni.sel{border-color:#b91c1c;background:#fef2f2}
   .uni.sel .sg{color:#b91c1c}
@@ -109,13 +110,8 @@
     <button type="button" class="sel-campo" id="unidade-campo"><span id="unidade-txt">Selecione a unidade</span><span class="seta">▾</span></button>
 
     <div class="lbl">Ocorrência <i>*</i></div>
-    <div class="srch">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-      <input id="busca" placeholder="Buscar por nome ou número" autocomplete="off">
-      <button id="btn-limpar" aria-label="Limpar">✕</button>
-    </div>
-    <div class="cnt" id="cnt"></div>
-    <div class="lista" id="lista"></div>
+    <button type="button" class="sel-campo" id="oco-campo"><span id="oco-txt">Selecione a ocorrência</span><span class="seta">▾</span></button>
+    <div style="flex:1;min-height:12px"></div>
 
     <div class="gps" id="gps-status"><span class="p"></span><span id="gps-txt">Localização: buscando…</span></div>
     <div id="form-erro" class="erro"></div>
@@ -138,17 +134,17 @@
   </div>
 </section>
 
-<!-- seletor suspenso de unidade -->
-<div class="painel-fundo" id="uni-fundo">
-  <div class="painel" role="dialog" aria-label="Selecionar unidade">
-    <div class="painel-topo"><b>Unidade da baixa</b><button type="button" id="uni-fechar" aria-label="Fechar">✕</button></div>
+<!-- seletor suspenso (usado para unidade e para ocorrência) -->
+<div class="painel-fundo" id="sel-fundo">
+  <div class="painel" role="dialog" aria-labelledby="sel-titulo">
+    <div class="painel-topo"><b id="sel-titulo"></b><button type="button" id="sel-fechar" aria-label="Fechar">✕</button></div>
     <div class="srch">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-      <input id="uni-busca" placeholder="Buscar por sigla ou nome" autocomplete="off" autocapitalize="characters">
-      <button type="button" id="uni-limpar" aria-label="Limpar">✕</button>
+      <input id="sel-busca" autocomplete="off">
+      <button type="button" id="sel-limpar" aria-label="Limpar">✕</button>
     </div>
-    <div class="cnt" id="uni-cnt"></div>
-    <div class="uni-lista" id="uni-lista"></div>
+    <div class="cnt" id="sel-cnt"></div>
+    <div class="uni-lista" id="sel-lista"></div>
   </div>
 </div>
 
@@ -174,7 +170,7 @@ let dispositivo = ls.get(K.DISP, null);
 if (!dispositivo) { dispositivo = uuid(); ls.set(K.DISP, dispositivo); }
 
 let listas = ls.get(K.LISTAS, { ocorrencias: [], unidades: [] });
-let unidadeSel = ls.get(K.UNI, null);
+let unidadeSel = null;   // nada pré-selecionado: o motorista escolhe a cada baixa
 let ocoSel = null;
 let ctrcValido = null;
 let gpsAtual = null, gpsPromessa = null;
@@ -258,80 +254,87 @@ async function verificarDuplicidade(ctrc) {
 function avisoDup(msg) { $('dup-aviso').textContent = msg; $('dup-aviso').style.display = 'block'; }
 
 /* ===================== UNIDADE ===================== */
+/* ===================== SELETORES SUSPENSOS (unidade e ocorrência) ===================== */
+const normalizar = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+const SELETORES = {
+  unidade: {
+    titulo: 'Unidade da baixa', placeholder: 'Buscar por sigla ou nome', nome: 'unidades',
+    itens: () => listas.unidades.map(u => ({ k: u.s, a: u.s, b: u.n || '', obj: u })),
+    atual: () => unidadeSel,
+    escolher: (it) => { unidadeSel = it.k; },
+  },
+  ocorrencia: {
+    titulo: 'Ocorrência', placeholder: 'Buscar por nome ou número', nome: 'ocorrências',
+    itens: () => listas.ocorrencias.map(o => ({ k: o.c, a: o.c, b: o.d, obj: o })),
+    atual: () => ocoSel && ocoSel.c,
+    escolher: (it) => { ocoSel = it.obj; },
+  },
+};
+let selAberto = null;
+
+function pintarCampo(id, vazioTxt, it, semLista) {
+  $(id + '-campo').classList.toggle('cheio', !!it);
+  const t = $(id + '-txt'); t.innerHTML = '';
+  if (it) { const b = document.createElement('b'); b.textContent = it.a; t.append(b, it.b ? ' — ' + it.b : ''); }
+  else t.textContent = semLista ? 'Lista ainda não baixada. Conecte-se à internet.' : vazioTxt;
+}
 function pintarUnidades() {
   if (unidadeSel && listas.unidades.length && !listas.unidades.some(u => u.s === unidadeSel)) unidadeSel = null;
   const u = listas.unidades.find(x => x.s === unidadeSel);
-  const campo = $('unidade-campo');
-  campo.classList.toggle('cheio', !!u);
-  $('unidade-txt').innerHTML = '';
-  if (u) {
-    const b = document.createElement('b'); b.textContent = u.s;
-    $('unidade-txt').append(b, u.n ? ' — ' + u.n : '');
-  } else {
-    $('unidade-txt').textContent = listas.unidades.length ? 'Selecione a unidade' : 'Unidades ainda não baixadas. Conecte-se à internet.';
+  pintarCampo('unidade', 'Selecione a unidade', u && { a: u.s, b: u.n }, !listas.unidades.length);
+}
+function pintarLista() {
+  if (ocoSel && listas.ocorrencias.length && !listas.ocorrencias.some(o => o.c === ocoSel.c)) ocoSel = null;
+  pintarCampo('oco', 'Selecione a ocorrência', ocoSel && { a: ocoSel.c, b: ocoSel.d }, !listas.ocorrencias.length);
+}
+function abrirSeletor(qual) {
+  const cfg = SELETORES[qual];
+  if (!cfg.itens().length) return;
+  selAberto = qual;
+  $('sel-titulo').textContent = cfg.titulo;
+  $('sel-busca').placeholder = cfg.placeholder;
+  $('sel-busca').value = '';
+  pintarSeletor();
+  $('sel-fundo').classList.add('aberto');
+  setTimeout(() => $('sel-busca').focus(), 50);
+}
+function fecharSeletor() { $('sel-fundo').classList.remove('aberto'); selAberto = null; }
+function pintarSeletor() {
+  const cfg = SELETORES[selAberto]; if (!cfg) return;
+  const termo = normalizar($('sel-busca').value.trim());
+  const todos = cfg.itens();
+  let filtrados = todos;
+  if (termo) {
+    filtrados = /^\d+$/.test(termo)
+      ? todos.filter(it => it.a.indexOf(termo) === 0 || it.a === termo.padStart(2, '0'))   // número: "1", "01", "37"…
+      : todos.filter(it => normalizar(it.a + ' ' + it.b).indexOf(termo) >= 0);
+    // quem começa com o termo (código/sigla) aparece primeiro
+    filtrados.sort((x, y) => (normalizar(y.a).indexOf(termo) === 0) - (normalizar(x.a).indexOf(termo) === 0));
   }
-}
-function abrirUnidades() {
-  if (!listas.unidades.length) return;
-  $('uni-busca').value = '';
-  pintarListaUnidades();
-  $('uni-fundo').classList.add('aberto');
-  setTimeout(() => $('uni-busca').focus(), 50);
-}
-function fecharUnidades() { $('uni-fundo').classList.remove('aberto'); }
-function pintarListaUnidades() {
-  const termo = normalizar($('uni-busca').value.trim());
-  const todas = listas.unidades;
-  const filtradas = !termo ? todas : todas.filter(u => normalizar(u.s + ' ' + (u.n || '')).indexOf(termo) >= 0);
-  // a sigla que começa com o termo aparece primeiro
-  filtradas.sort((a, b) => (normalizar(b.s).indexOf(termo) === 0) - (normalizar(a.s).indexOf(termo) === 0));
-  $('uni-cnt').textContent = termo ? filtradas.length + ' de ' + todas.length + ' unidades' : todas.length + ' unidades';
-  const box = $('uni-lista'); box.innerHTML = '';
-  if (!filtradas.length) { box.innerHTML = '<div class="vazio">Nenhuma unidade encontrada.</div>'; return; }
-  filtradas.forEach(u => {
+  $('sel-cnt').textContent = termo ? filtrados.length + ' de ' + todos.length + ' ' + cfg.nome : todos.length + ' ' + cfg.nome;
+  const box = $('sel-lista'); box.innerHTML = '';
+  if (!filtrados.length) { box.innerHTML = '<div class="vazio">Nada encontrado.</div>'; return; }
+  const atual = cfg.atual();
+  filtrados.forEach(it => {
     const b = document.createElement('button'); b.type = 'button';
-    b.className = 'uni' + (u.s === unidadeSel ? ' sel' : '');
+    b.className = 'uni' + (it.k === atual ? ' sel' : '');
     b.innerHTML = '<span class="sg"></span><span class="nm"></span>';
-    b.querySelector('.sg').textContent = u.s;
-    b.querySelector('.nm').textContent = u.n || '';
-    b.onclick = () => { unidadeSel = u.s; ls.set(K.UNI, u.s); fecharUnidades(); pintarUnidades(); atualizarBotao(); };
+    b.querySelector('.sg').textContent = it.a;
+    b.querySelector('.nm').textContent = it.b;
+    b.onclick = () => { cfg.escolher(it); fecharSeletor(); pintarUnidades(); pintarLista(); atualizarBotao(); };
     box.appendChild(b);
   });
 }
-$('unidade-campo').onclick = abrirUnidades;
-$('uni-fechar').onclick = fecharUnidades;
-$('uni-fundo').addEventListener('click', (e) => { if (e.target === $('uni-fundo')) fecharUnidades(); });
-$('uni-busca').addEventListener('input', pintarListaUnidades);
-$('uni-busca').addEventListener('keydown', (e) => {   // Enter escolhe a primeira da lista
-  if (e.key === 'Enter') { const b = $('uni-lista').querySelector('.uni'); if (b) b.click(); }
+$('unidade-campo').onclick = () => abrirSeletor('unidade');
+$('oco-campo').onclick = () => abrirSeletor('ocorrencia');
+$('sel-fechar').onclick = fecharSeletor;
+$('sel-fundo').addEventListener('click', (e) => { if (e.target === $('sel-fundo')) fecharSeletor(); });
+$('sel-busca').addEventListener('input', pintarSeletor);
+$('sel-busca').addEventListener('keydown', (e) => {   // Enter escolhe o primeiro da lista
+  if (e.key === 'Enter') { const b = $('sel-lista').querySelector('.uni'); if (b) b.click(); }
 });
-$('uni-limpar').onclick = () => { $('uni-busca').value = ''; pintarListaUnidades(); $('uni-busca').focus(); };
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharUnidades(); });
-
-/* ===================== OCORRÊNCIA ===================== */
-const normalizar = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
-function pintarLista() {
-  const ocs = listas.ocorrencias;
-  const termo = normalizar($('busca').value.trim());
-  const filtradas = !termo ? ocs : ocs.filter(o =>
-    /^\d+$/.test(termo) ? o.c.indexOf(termo) === 0 || o.c === termo.padStart(2, '0')
-                        : normalizar(o.c + ' ' + o.d).indexOf(termo) >= 0);
-  $('cnt').textContent = termo ? (filtradas.length + ' de ' + ocs.length + ' ocorrências encontradas') : (ocs.length + ' ocorrências');
-  const lista = $('lista'); lista.innerHTML = '';
-  if (!ocs.length) { lista.innerHTML = '<div class="vazio">Lista de ocorrências ainda não baixada. Conecte-se à internet uma vez.</div>'; return; }
-  if (!filtradas.length) { lista.innerHTML = '<div class="vazio">Nenhuma ocorrência encontrada.</div>'; return; }
-  filtradas.forEach(o => {
-    const b = document.createElement('button');
-    b.className = 'oc' + (ocoSel && ocoSel.c === o.c ? ' sel' : '');
-    b.innerHTML = '<span class="r"></span><span class="cd"></span><span class="ds"></span>';
-    b.querySelector('.cd').textContent = o.c;
-    b.querySelector('.ds').textContent = o.d;
-    b.onclick = () => { ocoSel = o; pintarLista(); atualizarBotao(); };
-    lista.appendChild(b);
-  });
-}
-$('busca').addEventListener('input', pintarLista);
-$('btn-limpar').onclick = () => { $('busca').value = ''; pintarLista(); $('busca').focus(); };
+$('sel-limpar').onclick = () => { $('sel-busca').value = ''; pintarSeletor(); $('sel-busca').focus(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharSeletor(); });
 
 function atualizarBotao() { $('btn-enviar').disabled = !(ctrcValido && unidadeSel && ocoSel); }
 
@@ -486,8 +489,8 @@ function mostrarFim(item, r) {
   mostrar('t-fim');
 }
 $('btn-nova').onclick = () => {
-  if (!$('btn-nova').dataset.manter) {               // nova baixa: limpa CTRC e ocorrência, mantém a unidade
-    $('ctrc').value = ''; ctrcValido = null; ocoSel = null; $('busca').value = '';
+  if (!$('btn-nova').dataset.manter) {               // nova baixa: limpa CTRC, unidade e ocorrência
+    $('ctrc').value = ''; ctrcValido = null; ocoSel = null; unidadeSel = null;
     $('ctrc').classList.remove('ok'); $('ctrc-dica').className = 'dica'; $('ctrc-dica').textContent = '3 letras, número, hífen e dígito';
     $('dup-aviso').style.display = 'none';
   }

@@ -1,7 +1,7 @@
 /* Service worker: guarda o app no celular para abrir mesmo sem internet.
  * Ao publicar uma versão nova do app, aumente o número em VERSAO. */
 const PREFIXO = 'baixa-ctrc-';
-const VERSAO = PREFIXO + 'v3';
+const VERSAO = PREFIXO + 'v4';
 const ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
