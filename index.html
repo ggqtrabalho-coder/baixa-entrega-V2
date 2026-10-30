@@ -30,10 +30,23 @@
   .logo{width:72px;height:72px;border-radius:20px;background:#fee2e2;margin:36px auto 6px;display:flex;align-items:center;justify-content:center}
   .erro{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;font-size:13px;display:none;line-height:1.4}
   .aviso{background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:13px;display:none}
-  /* unidades */
-  .chips{display:flex;flex-wrap:wrap;gap:8px}
-  .chip{border:1.5px solid #d1d5db;background:#fff;border-radius:22px;padding:10px 18px;font-size:15px;font-weight:700;color:#374151}
-  .chip.sel{border-color:#b91c1c;background:#b91c1c;color:#fff}
+  /* unidades: seletor suspenso com pesquisa */
+  .sel-campo{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:1.5px solid #d1d5db;border-radius:10px;padding:13px 12px;background:#fff;font-size:16px;color:#9ca3af;text-align:left}
+  .sel-campo.cheio{color:#111827;border-color:#16a34a}
+  .sel-campo b{font-weight:700}
+  .sel-campo .seta{color:#6b7280;flex:none}
+  .painel-fundo{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;z-index:8;align-items:flex-end;justify-content:center}
+  .painel-fundo.aberto{display:flex}
+  .painel{background:#fff;width:100%;max-width:520px;height:72vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;padding:14px 16px 16px;gap:10px}
+  .painel-topo{display:flex;align-items:center;justify-content:space-between}
+  .painel-topo b{font-size:16px}
+  .painel-topo button{background:none;border:0;font-size:22px;color:#6b7280;padding:2px 6px}
+  .uni-lista{overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:120px}
+  .uni{display:flex;align-items:center;gap:10px;border:1.5px solid #e5e7eb;border-radius:10px;padding:11px 12px;background:#fff;text-align:left;width:100%;flex:none;font-size:14px}
+  .uni .sg{font-weight:700;min-width:44px}
+  .uni .nm{color:#4b5563}
+  .uni.sel{border-color:#b91c1c;background:#fef2f2}
+  .uni.sel .sg{color:#b91c1c}
   /* ocorrências */
   .srch{display:flex;align-items:center;gap:8px;border:1.5px solid #d1d5db;border-radius:10px;padding:0 10px}
   .srch:focus-within{border-color:#b91c1c}
@@ -86,13 +99,14 @@
 <section id="t-form" class="tela">
   <div class="top"><b>Baixa por CTRC</b><small id="resumo">—</small></div>
   <div class="corpo">
+    <div id="listas-erro" class="erro" onclick="atualizarListas()"></div>
     <div class="lbl">CTRC <i>*</i></div>
     <input id="ctrc" class="inp" maxlength="14" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Ex.: SAO183849-1">
     <div id="ctrc-dica" class="dica">3 letras, número, hífen e dígito</div>
     <div id="dup-aviso" class="aviso"></div>
 
     <div class="lbl">Unidade da baixa <i>*</i></div>
-    <div class="chips" id="unidades"></div>
+    <button type="button" class="sel-campo" id="unidade-campo"><span id="unidade-txt">Selecione a unidade</span><span class="seta">▾</span></button>
 
     <div class="lbl">Ocorrência <i>*</i></div>
     <div class="srch">
@@ -124,12 +138,26 @@
   </div>
 </section>
 
+<!-- seletor suspenso de unidade -->
+<div class="painel-fundo" id="uni-fundo">
+  <div class="painel" role="dialog" aria-label="Selecionar unidade">
+    <div class="painel-topo"><b>Unidade da baixa</b><button type="button" id="uni-fechar" aria-label="Fechar">✕</button></div>
+    <div class="srch">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input id="uni-busca" placeholder="Buscar por sigla ou nome" autocomplete="off" autocapitalize="characters">
+      <button type="button" id="uni-limpar" aria-label="Limpar">✕</button>
+    </div>
+    <div class="cnt" id="uni-cnt"></div>
+    <div class="uni-lista" id="uni-lista"></div>
+  </div>
+</div>
+
 <div class="carregando" id="carregando">Aguarde…</div>
 
 <script>
 /* ===================== CONFIGURAÇÃO ===================== */
 // URL da implantação do Apps Script (Implantar > Gerenciar implantações > URL do app da Web)
-const API_URL = 'https://script.google.com/macros/s/AKfycbzA5zdQBMLA7B8JI7eAr1qG8YFkBHgSCi4wLWY1tm9vMZYuabgmbG2Uw8D9ZGuM8RhDzA/exec';   
+const API_URL = 'COLE_AQUI_O_LINK_DO_NOVO_APPS_SCRIPT';   // ex.: https://script.google.com/macros/s/XXXX/exec
 const LIMITE_PRECISAO_M = 1000;   // pior que isso = localização aproximada (não envia)
 const RE_CTRC = /^([A-Z]{3})(\d{1,9})-?(\d)$/;
 
@@ -184,7 +212,16 @@ async function atualizarListas() {
   try {
     const l = await api('carregarListas');
     if (l && l.ocorrencias && l.unidades) { listas = l; ls.set(K.LISTAS, l); }
-  } catch (e) { /* sem internet: usa a cópia do aparelho */ }
+    erro('listas-erro');
+    if (!listas.unidades.length || !listas.ocorrencias.length)
+      erro('listas-erro', 'A planilha não tem ' + (!listas.unidades.length ? 'unidades' : 'ocorrências') +
+        ' ativas. Confira as abas Unidades/Ocorrencias (coluna Ativa/Mostrar = S) e use o menu "Atualizar listas no app".');
+  } catch (e) {
+    // sem internet usa a cópia do aparelho; outros erros são mostrados para diagnóstico
+    if (!(navigator.onLine === false) && !(listas.unidades.length && listas.ocorrencias.length))
+      erro('listas-erro', 'Não foi possível carregar unidades e ocorrências: ' + String(e.message || e).replace('NetworkError: ', '') +
+        '. Toque aqui para tentar de novo.');
+  }
   pintarUnidades(); pintarLista();
 }
 
@@ -222,17 +259,54 @@ function avisoDup(msg) { $('dup-aviso').textContent = msg; $('dup-aviso').style.
 
 /* ===================== UNIDADE ===================== */
 function pintarUnidades() {
-  const box = $('unidades'); box.innerHTML = '';
-  if (!listas.unidades.length) { box.innerHTML = '<div class="vazio" style="padding:6px">Unidades ainda não baixadas. Conecte-se à internet.</div>'; return; }
-  if (unidadeSel && !listas.unidades.some(u => u.s === unidadeSel)) unidadeSel = null;
-  listas.unidades.forEach(u => {
-    const b = document.createElement('button');
-    b.className = 'chip' + (u.s === unidadeSel ? ' sel' : '');
-    b.textContent = u.s; if (u.n) b.title = u.n;
-    b.onclick = () => { unidadeSel = u.s; ls.set(K.UNI, u.s); pintarUnidades(); atualizarBotao(); };
+  if (unidadeSel && listas.unidades.length && !listas.unidades.some(u => u.s === unidadeSel)) unidadeSel = null;
+  const u = listas.unidades.find(x => x.s === unidadeSel);
+  const campo = $('unidade-campo');
+  campo.classList.toggle('cheio', !!u);
+  $('unidade-txt').innerHTML = '';
+  if (u) {
+    const b = document.createElement('b'); b.textContent = u.s;
+    $('unidade-txt').append(b, u.n ? ' — ' + u.n : '');
+  } else {
+    $('unidade-txt').textContent = listas.unidades.length ? 'Selecione a unidade' : 'Unidades ainda não baixadas. Conecte-se à internet.';
+  }
+}
+function abrirUnidades() {
+  if (!listas.unidades.length) return;
+  $('uni-busca').value = '';
+  pintarListaUnidades();
+  $('uni-fundo').classList.add('aberto');
+  setTimeout(() => $('uni-busca').focus(), 50);
+}
+function fecharUnidades() { $('uni-fundo').classList.remove('aberto'); }
+function pintarListaUnidades() {
+  const termo = normalizar($('uni-busca').value.trim());
+  const todas = listas.unidades;
+  const filtradas = !termo ? todas : todas.filter(u => normalizar(u.s + ' ' + (u.n || '')).indexOf(termo) >= 0);
+  // a sigla que começa com o termo aparece primeiro
+  filtradas.sort((a, b) => (normalizar(b.s).indexOf(termo) === 0) - (normalizar(a.s).indexOf(termo) === 0));
+  $('uni-cnt').textContent = termo ? filtradas.length + ' de ' + todas.length + ' unidades' : todas.length + ' unidades';
+  const box = $('uni-lista'); box.innerHTML = '';
+  if (!filtradas.length) { box.innerHTML = '<div class="vazio">Nenhuma unidade encontrada.</div>'; return; }
+  filtradas.forEach(u => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = 'uni' + (u.s === unidadeSel ? ' sel' : '');
+    b.innerHTML = '<span class="sg"></span><span class="nm"></span>';
+    b.querySelector('.sg').textContent = u.s;
+    b.querySelector('.nm').textContent = u.n || '';
+    b.onclick = () => { unidadeSel = u.s; ls.set(K.UNI, u.s); fecharUnidades(); pintarUnidades(); atualizarBotao(); };
     box.appendChild(b);
   });
 }
+$('unidade-campo').onclick = abrirUnidades;
+$('uni-fechar').onclick = fecharUnidades;
+$('uni-fundo').addEventListener('click', (e) => { if (e.target === $('uni-fundo')) fecharUnidades(); });
+$('uni-busca').addEventListener('input', pintarListaUnidades);
+$('uni-busca').addEventListener('keydown', (e) => {   // Enter escolhe a primeira da lista
+  if (e.key === 'Enter') { const b = $('uni-lista').querySelector('.uni'); if (b) b.click(); }
+});
+$('uni-limpar').onclick = () => { $('uni-busca').value = ''; pintarListaUnidades(); $('uni-busca').focus(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharUnidades(); });
 
 /* ===================== OCORRÊNCIA ===================== */
 const normalizar = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();

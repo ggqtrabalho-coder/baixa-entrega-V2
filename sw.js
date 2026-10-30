@@ -1,8 +1,8 @@
 /* Service worker: guarda o app no celular para abrir mesmo sem internet.
  * Ao publicar uma versão nova do app, aumente o número em VERSAO. */
-const PREFIXO = 'baixa-entrega-';
-const VERSAO = PREFIXO + 'v5.1';
-const ARQUIVOS = ['./', 'index.html', 'html5-qrcode.min.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+const PREFIXO = 'baixa-ctrc-';
+const VERSAO = PREFIXO + 'v3';
+const ARQUIVOS = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
