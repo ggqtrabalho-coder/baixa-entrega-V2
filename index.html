@@ -12,33 +12,36 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
-  body{font-family:"Segoe UI",Roboto,Arial,sans-serif;background:#fff;color:#111827;max-width:520px;margin:0 auto}
-  .tela{display:none;min-height:100vh;flex-direction:column}
+  /* o app ocupa exatamente a altura da tela: nada de rolar a página */
+  body{font-family:"Segoe UI",Roboto,Arial,sans-serif;background:#fff;color:#111827;max-width:520px;margin:0 auto;
+       height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+  .tela{display:none;flex:1;min-height:0;flex-direction:column}
   .tela.ativa{display:flex}
-  .top{background:#b91c1c;color:#fff;padding:14px 16px}
-  .top b{font-size:17px;display:block}
+  .top{background:#b91c1c;color:#fff;padding:10px 16px;flex:none}
+  .top b{font-size:16px;display:block}
   .top small{font-size:12px;opacity:.9}
-  .corpo{padding:16px;flex:1;display:flex;flex-direction:column;gap:10px}
-  .lbl{font-size:13px;color:#374151;font-weight:700;margin-top:4px}
+  .corpo{padding:12px 16px;flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+  .obs{flex:none;background:#fffbeb;border-top:1px solid #fde68a;color:#92400e;font-size:12px;line-height:1.35;padding:7px 16px;text-align:center}
+  .lbl{font-size:13px;color:#374151;font-weight:700;margin-top:2px}
   .lbl i{color:#b91c1c;font-style:normal}
-  input.inp{border:1.5px solid #d1d5db;border-radius:10px;padding:13px 12px;font-size:17px;width:100%;outline:none}
+  input.inp{border:1.5px solid #d1d5db;border-radius:10px;padding:11px 12px;font-size:17px;width:100%;outline:none}
   input.inp:focus{border-color:#b91c1c}
   input.inp.ok{border-color:#16a34a}
   .dica{font-size:12px;color:#6b7280;margin-top:-4px}
   .dica.ok{color:#166534}.dica.err{color:#b91c1c}
-  .btn{background:#b91c1c;color:#fff;border:0;border-radius:12px;padding:15px;text-align:center;font-weight:700;font-size:16px;width:100%}
+  .btn{background:#b91c1c;color:#fff;border:0;border-radius:12px;padding:13px;flex:none;text-align:center;font-weight:700;font-size:16px;width:100%}
   .btn:disabled{opacity:.45}
-  .logo{width:72px;height:72px;border-radius:20px;background:#fee2e2;margin:36px auto 6px;display:flex;align-items:center;justify-content:center}
-  .erro{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;font-size:13px;display:none;line-height:1.4}
-  .aviso{background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:13px;display:none}
+  .logo{width:60px;height:60px;border-radius:18px;background:#fee2e2;margin:4vh auto 4px;flex:none;display:flex;align-items:center;justify-content:center}
+  .erro{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:8px 12px;font-size:13px;display:none;line-height:1.4}
+  .aviso{background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:8px 12px;font-size:13px;display:none}
   /* unidades: seletor suspenso com pesquisa */
-  .sel-campo{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:1.5px solid #d1d5db;border-radius:10px;padding:13px 12px;background:#fff;font-size:16px;color:#9ca3af;text-align:left}
+  .sel-campo{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:1.5px solid #d1d5db;border-radius:10px;padding:11px 12px;background:#fff;font-size:16px;color:#9ca3af;text-align:left;flex:none}
   .sel-campo.cheio{color:#111827;border-color:#16a34a}
   .sel-campo b{font-weight:700}
   .sel-campo .seta{color:#6b7280;flex:none}
   .painel-fundo{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;z-index:8;align-items:flex-end;justify-content:center}
   .painel-fundo.aberto{display:flex}
-  .painel{background:#fff;width:100%;max-width:520px;height:72vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;padding:14px 16px 16px;gap:10px}
+  .painel{background:#fff;width:100%;max-width:520px;height:72vh;height:72dvh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;padding:14px 16px 16px;gap:10px}
   .painel-topo{display:flex;align-items:center;justify-content:space-between}
   .painel-topo b{font-size:16px}
   .painel-topo button{background:none;border:0;font-size:22px;color:#6b7280;padding:2px 6px}
@@ -69,39 +72,54 @@
   .gps .p{width:8px;height:8px;border-radius:50%;background:#9ca3af}
   .gps.ok .p{background:#16a34a}.gps.ruim .p{background:#dc2626}
   /* fim */
-  .big{width:104px;height:104px;border-radius:50%;margin:30px auto 10px;display:flex;align-items:center;justify-content:center}
+  .big{width:76px;height:76px;border-radius:50%;margin:1vh auto 2px;flex:none;display:flex;align-items:center;justify-content:center}
   .c{text-align:center}
   .muted{font-size:13px;color:#6b7280;text-align:center}
-  .card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:11px 13px}
+  .card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:7px 12px;flex:none}
   .card .k{font-size:12px;color:#6b7280}
-  .card .v{font-size:15px;font-weight:600}
+  .card .v{font-size:14px;font-weight:600;line-height:1.3}
   .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px}
   /* faixa de instalação */
-  .instalar{display:none;align-items:center;gap:10px;background:#fef2f2;border-bottom:1px solid #fecaca;padding:10px 16px;font-size:13px;color:#7f1d1d;line-height:1.35}
+  .instalar{display:none;flex:none;align-items:center;gap:10px;background:#fef2f2;border-bottom:1px solid #fecaca;padding:6px 16px;font-size:12px;color:#7f1d1d;line-height:1.35}
   .instalar.ver{display:flex}
   .instalar .txt{flex:1}
-  .instalar .bt{background:#b91c1c;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px;flex:none}
+  .instalar .bt{background:#b91c1c;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-weight:700;font-size:14px;flex:none}
   .instalar .x{background:none;border:0;color:#9ca3af;font-size:18px;padding:4px;flex:none}
-  .alerta-nav{display:none;background:#fffbeb;border-bottom:1px solid #fde68a;color:#92400e;padding:10px 16px;font-size:13px;line-height:1.4}
+  .alerta-nav{display:none;flex:none;background:#fffbeb;border-bottom:1px solid #fde68a;color:#92400e;padding:8px 16px;font-size:12px;line-height:1.4}
   .alerta-nav.ver{display:block}
   .carregando{position:fixed;inset:0;background:rgba(255,255,255,.8);display:none;align-items:center;justify-content:center;font-weight:600;z-index:9;padding:20px;text-align:center}
   /* leitor */
-  .cam{background:#1f2937;flex:1;display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px}
-  .cam p{color:#fff;font-size:15px;text-align:center}
-  #reader{width:100%;max-width:420px;border-radius:12px;overflow:hidden;background:#111;position:relative;min-height:180px}
-  #reader video{border-radius:12px}
+  .cam{background:#1f2937;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;padding:10px 16px;gap:8px;overflow:hidden}
+  .cam p{color:#fff;font-size:14px;text-align:center;flex:none}
+  #reader{width:100%;max-width:420px;border-radius:12px;overflow:hidden;background:#111;position:relative;flex:0 1 auto;min-height:140px;max-height:46dvh}
+  #reader video{border-radius:12px;max-height:46dvh;object-fit:cover}
   .mira{position:absolute;left:5%;right:5%;top:30%;bottom:30%;border:3px solid rgba(255,255,255,.9);border-radius:10px;box-shadow:0 0 0 2000px rgba(0,0,0,.25);pointer-events:none}
   .mira::after{content:'';position:absolute;left:4%;right:4%;top:50%;height:2px;background:#ef4444;box-shadow:0 0 8px #ef4444}
-  .ferr{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-  .pill{background:rgba(255,255,255,.15);color:#fff;font-size:15px;border-radius:22px;padding:11px 18px;border:0}
+  .ferr{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;flex:none}
+  .pill{background:rgba(255,255,255,.15);color:#fff;font-size:15px;border-radius:22px;padding:10px 18px;border:0}
   .pill.forte{background:#fff;color:#b91c1c;font-weight:700}
-  #diag{color:#9ca3af;font-size:11px;text-align:center;max-width:420px;word-break:break-all}
+  #diag{flex:none;color:#9ca3af;font-size:11px;text-align:center;max-width:420px;word-break:break-all}
   /* documento lido */
-  .doc{display:flex;align-items:center;gap:10px;border:1.5px solid #16a34a;background:#f0fdf4;border-radius:10px;padding:10px 12px}
+  .doc{display:flex;align-items:center;gap:10px;border:1.5px solid #16a34a;background:#f0fdf4;border-radius:10px;padding:8px 12px}
   .doc .t{flex:1;min-width:0}
   .doc b{display:block;font-size:16px}
   .doc small{font-size:11px;color:#4b5563;word-break:break-all}
   .link{background:none;border:0;color:#b91c1c;font-weight:700;font-size:13px;text-decoration:underline;padding:4px;flex:none}
+  /* celulares muito baixos (ex.: 320×568): tudo mais compacto */
+  @media (max-height: 620px) {
+    .top{padding:7px 14px} .top b{font-size:15px} .top small{font-size:11px}
+    .corpo{padding:8px 14px;gap:5px}
+    .lbl{font-size:12px;margin-top:0}
+    input.inp,.sel-campo{padding:8px 10px;font-size:15px}
+    .btn{padding:10px;font-size:15px}
+    .doc{padding:6px 10px} .doc b{font-size:14px} .doc small{font-size:10px}
+    .aviso,.erro{padding:6px 10px;font-size:12px;line-height:1.3}
+    .card{padding:5px 10px} .card .k{font-size:11px} .card .v{font-size:13px}
+    .big{width:56px;height:56px} .big svg{width:36px;height:36px}
+    #fim-titulo{font-size:17px!important}
+    .obs{font-size:11px;padding:5px 12px}
+    .logo{width:48px;height:48px;margin-top:2vh}
+  }
 </style>
 </head>
 <body>
@@ -118,16 +136,16 @@
 <section id="t-gps" class="tela">
   <div class="corpo" style="text-align:center">
     <div class="logo"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
-    <div style="font-size:20px;font-weight:700">Localização obrigatória</div>
-    <div style="font-size:14px;color:#374151;line-height:1.45;margin:6px 0 4px">
-      Para registrar baixas, o app usa a <b>localização atual e precisa</b> do celular no momento de cada baixa.
-      Ela é capturada automaticamente pelo GPS e não pode ser alterada.
+    <div style="font-size:19px;font-weight:700">Localização obrigatória</div>
+    <div style="font-size:14px;color:#374151;line-height:1.4">
+      O app registra a <b>localização atual e precisa</b> do celular em cada baixa, automaticamente pelo GPS.
     </div>
-    <div style="font-size:13px;color:#6b7280;line-height:1.4">Quando o celular perguntar, toque em <b>Permitir</b> e escolha <b>Localização precisa</b>.</div>
+    <div style="font-size:13px;color:#6b7280;line-height:1.35">Quando o celular perguntar, toque em <b>Permitir</b> e escolha <b>Localização precisa</b>.</div>
     <div id="gps-msg" class="erro" style="text-align:left"></div>
-    <div style="flex:1;min-height:24px"></div>
+    <div style="flex:1;min-height:8px"></div>
     <button class="btn" id="btn-gps">Concordo e permitir localização</button>
   </div>
+  <div class="obs">⚠ A baixa não isenta a necessidade da entrega do canhoto físico na filial.</div>
 </section>
 
 <!-- ============ LEITOR DE CÓDIGO DE BARRAS (primeira tela) ============ -->
@@ -144,6 +162,7 @@
     </div>
     <div id="leitor-oculto" style="display:none"></div>
   </div>
+  <div class="obs">⚠ A baixa não isenta a necessidade da entrega do canhoto físico na filial.</div>
 </section>
 
 <!-- ============ FORMULÁRIO DA BAIXA ============ -->
@@ -152,14 +171,14 @@
   <div class="corpo">
     <div id="listas-erro" class="erro" onclick="atualizarListas()"></div>
     <div id="bloco-chave" style="display:none">
-      <div class="lbl" style="margin-bottom:8px">DACTE lido</div>
+      <div class="lbl" style="margin-bottom:6px">DACTE lido</div>
       <div class="doc"><div class="t"><b id="chave-titulo"></b><small id="chave-num"></small></div><button type="button" class="link" id="btn-reler">Ler outro</button></div>
     </div>
     <div id="bloco-ctrc">
       <div class="lbl" style="display:flex;justify-content:space-between;align-items:center">
         <span>CTRC <i>*</i></span><button type="button" class="link" id="btn-voltar-leitor">Voltar ao leitor</button></div>
-      <input id="ctrc" class="inp" maxlength="14" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Ex.: SAO183849-1" style="margin-top:8px">
-      <div id="ctrc-dica" class="dica" style="margin-top:6px">3 letras, número, hífen e dígito</div>
+      <input id="ctrc" class="inp" maxlength="14" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Ex.: SAO183849-1" style="margin-top:6px">
+      <div id="ctrc-dica" class="dica" style="margin-top:4px">3 letras, número, hífen e dígito</div>
     </div>
     <div id="dup-aviso" class="aviso"></div>
 
@@ -168,27 +187,29 @@
 
     <div class="lbl">Ocorrência <i>*</i></div>
     <button type="button" class="sel-campo" id="oco-campo"><span id="oco-txt">Selecione a ocorrência</span><span class="seta">▾</span></button>
-    <div style="flex:1;min-height:12px"></div>
+    <div style="flex:1;min-height:4px"></div>
 
     <div class="gps" id="gps-status"><span class="p"></span><span id="gps-txt">Localização: buscando…</span></div>
     <div id="form-erro" class="erro"></div>
     <button id="btn-enviar" class="btn" disabled>Enviar baixa</button>
   </div>
+  <div class="obs">⚠ A baixa não isenta a necessidade da entrega do canhoto físico na filial.</div>
 </section>
 
 <!-- ============ ENVIADO ============ -->
 <section id="t-fim" class="tela">
   <div class="corpo">
     <div class="big" id="fim-icone"></div>
-    <div class="c" style="font-size:22px;font-weight:700" id="fim-titulo">Baixa enviada!</div>
-    <div class="muted" style="margin-bottom:10px" id="fim-sub"></div>
+    <div class="c" style="font-size:20px;font-weight:700" id="fim-titulo">Baixa enviada!</div>
+    <div class="muted" style="margin-bottom:2px" id="fim-sub"></div>
     <div class="card"><div class="k">Documento</div><div class="v" id="fim-ctrc"></div></div>
     <div class="card"><div class="k">Unidade da baixa</div><div class="v" id="fim-uni"></div></div>
     <div class="card"><div class="k">Ocorrência</div><div class="v" id="fim-oco"></div></div>
     <div class="card"><div class="k">Status</div><div class="v" id="fim-status"></div></div>
-    <div style="flex:1;min-height:20px"></div>
+    <div style="flex:1;min-height:6px"></div>
     <button class="btn" id="btn-nova">Nova baixa</button>
   </div>
+  <div class="obs">⚠ A baixa não isenta a necessidade da entrega do canhoto físico na filial.</div>
 </section>
 
 <!-- seletor suspenso (usado para unidade e para ocorrência) -->
@@ -210,7 +231,7 @@
 <script>
 /* ===================== CONFIGURAÇÃO ===================== */
 // URL da implantação do Apps Script (Implantar > Gerenciar implantações > URL do app da Web)
-const API_URL = 'https://script.google.com/macros/s/AKfycbzA5zdQBMLA7B8JI7eAr1qG8YFkBHgSCi4wLWY1tm9vMZYuabgmbG2Uw8D9ZGuM8RhDzA/exec';   // ex.: https://script.google.com/macros/s/XXXX/exec
+const API_URL = 'COLE_AQUI_O_LINK_DO_NOVO_APPS_SCRIPT';   // ex.: https://script.google.com/macros/s/XXXX/exec
 const LIMITE_PRECISAO_M = 1000;   // pior que isso = localização aproximada (não envia)
 const RE_CTRC = /^([A-Z]{3})(\d{1,9})-?(\d)$/;
 
