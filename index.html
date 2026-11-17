@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script src="html5-qrcode.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
@@ -75,10 +76,43 @@
   .card .k{font-size:12px;color:#6b7280}
   .card .v{font-size:15px;font-weight:600}
   .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px}
+  /* faixa de instalação */
+  .instalar{display:none;align-items:center;gap:10px;background:#fef2f2;border-bottom:1px solid #fecaca;padding:10px 16px;font-size:13px;color:#7f1d1d;line-height:1.35}
+  .instalar.ver{display:flex}
+  .instalar .txt{flex:1}
+  .instalar .bt{background:#b91c1c;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px;flex:none}
+  .instalar .x{background:none;border:0;color:#9ca3af;font-size:18px;padding:4px;flex:none}
+  .alerta-nav{display:none;background:#fffbeb;border-bottom:1px solid #fde68a;color:#92400e;padding:10px 16px;font-size:13px;line-height:1.4}
+  .alerta-nav.ver{display:block}
   .carregando{position:fixed;inset:0;background:rgba(255,255,255,.8);display:none;align-items:center;justify-content:center;font-weight:600;z-index:9;padding:20px;text-align:center}
+  /* leitor */
+  .cam{background:#1f2937;flex:1;display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px}
+  .cam p{color:#fff;font-size:15px;text-align:center}
+  #reader{width:100%;max-width:420px;border-radius:12px;overflow:hidden;background:#111;position:relative;min-height:180px}
+  #reader video{border-radius:12px}
+  .mira{position:absolute;left:5%;right:5%;top:30%;bottom:30%;border:3px solid rgba(255,255,255,.9);border-radius:10px;box-shadow:0 0 0 2000px rgba(0,0,0,.25);pointer-events:none}
+  .mira::after{content:'';position:absolute;left:4%;right:4%;top:50%;height:2px;background:#ef4444;box-shadow:0 0 8px #ef4444}
+  .ferr{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .pill{background:rgba(255,255,255,.15);color:#fff;font-size:15px;border-radius:22px;padding:11px 18px;border:0}
+  .pill.forte{background:#fff;color:#b91c1c;font-weight:700}
+  #diag{color:#9ca3af;font-size:11px;text-align:center;max-width:420px;word-break:break-all}
+  /* documento lido */
+  .doc{display:flex;align-items:center;gap:10px;border:1.5px solid #16a34a;background:#f0fdf4;border-radius:10px;padding:10px 12px}
+  .doc .t{flex:1;min-width:0}
+  .doc b{display:block;font-size:16px}
+  .doc small{font-size:11px;color:#4b5563;word-break:break-all}
+  .link{background:none;border:0;color:#b91c1c;font-weight:700;font-size:13px;text-decoration:underline;padding:4px;flex:none}
 </style>
 </head>
 <body>
+
+<div class="alerta-nav" id="alerta-nav"></div>
+<div class="instalar" id="instalar">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2" style="flex:none"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 7v7m-3-3l3 3 3-3"/></svg>
+    <div class="txt" id="instalar-txt"><b>Instale o app</b> para abrir pelo ícone e usar sem internet.</div>
+    <button class="bt" id="btn-instalar">Instalar</button>
+    <button class="x" id="instalar-fechar" aria-label="Agora não">✕</button>
+</div>
 
 <!-- ============ LOCALIZAÇÃO OBRIGATÓRIA ============ -->
 <section id="t-gps" class="tela">
@@ -96,14 +130,37 @@
   </div>
 </section>
 
+<!-- ============ LEITOR DE CÓDIGO DE BARRAS (primeira tela) ============ -->
+<section id="t-scan" class="tela">
+  <div class="top"><b>Baixa de Entrega</b><small class="resumo">—</small></div>
+  <div class="cam">
+    <p>Aponte para o código de barras do <b>DACTE</b>, dentro da moldura</p>
+    <div id="reader"></div>
+    <div id="diag"></div>
+    <div id="scan-erro" class="erro" style="width:100%;max-width:420px"></div>
+    <div class="ferr">
+      <button class="pill" id="btn-trocar" style="display:none">🔄 Trocar câmera</button>
+      <button class="pill forte" id="btn-digitar">⌨ Digitar CTRC</button>
+    </div>
+    <div id="leitor-oculto" style="display:none"></div>
+  </div>
+</section>
+
 <!-- ============ FORMULÁRIO DA BAIXA ============ -->
 <section id="t-form" class="tela">
-  <div class="top"><b>Baixa de Entrega</b><small id="resumo">—</small></div>
+  <div class="top"><b>Baixa de Entrega</b><small class="resumo">—</small></div>
   <div class="corpo">
     <div id="listas-erro" class="erro" onclick="atualizarListas()"></div>
-    <div class="lbl">CTRC <i>*</i></div>
-    <input id="ctrc" class="inp" maxlength="14" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Ex.: SAO183849-1">
-    <div id="ctrc-dica" class="dica">3 letras, número, hífen e dígito</div>
+    <div id="bloco-chave" style="display:none">
+      <div class="lbl" style="margin-bottom:8px">DACTE lido</div>
+      <div class="doc"><div class="t"><b id="chave-titulo"></b><small id="chave-num"></small></div><button type="button" class="link" id="btn-reler">Ler outro</button></div>
+    </div>
+    <div id="bloco-ctrc">
+      <div class="lbl" style="display:flex;justify-content:space-between;align-items:center">
+        <span>CTRC <i>*</i></span><button type="button" class="link" id="btn-voltar-leitor">Voltar ao leitor</button></div>
+      <input id="ctrc" class="inp" maxlength="14" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Ex.: SAO183849-1" style="margin-top:8px">
+      <div id="ctrc-dica" class="dica" style="margin-top:6px">3 letras, número, hífen e dígito</div>
+    </div>
     <div id="dup-aviso" class="aviso"></div>
 
     <div class="lbl">Unidade da baixa <i>*</i></div>
@@ -125,7 +182,7 @@
     <div class="big" id="fim-icone"></div>
     <div class="c" style="font-size:22px;font-weight:700" id="fim-titulo">Baixa enviada!</div>
     <div class="muted" style="margin-bottom:10px" id="fim-sub"></div>
-    <div class="card"><div class="k">CTRC</div><div class="v" id="fim-ctrc"></div></div>
+    <div class="card"><div class="k">Documento</div><div class="v" id="fim-ctrc"></div></div>
     <div class="card"><div class="k">Unidade da baixa</div><div class="v" id="fim-uni"></div></div>
     <div class="card"><div class="k">Ocorrência</div><div class="v" id="fim-oco"></div></div>
     <div class="card"><div class="k">Status</div><div class="v" id="fim-status"></div></div>
@@ -153,7 +210,7 @@
 <script>
 /* ===================== CONFIGURAÇÃO ===================== */
 // URL da implantação do Apps Script (Implantar > Gerenciar implantações > URL do app da Web)
-const API_URL = 'https://script.google.com/macros/s/AKfycbzA5zdQBMLA7B8JI7eAr1qG8YFkBHgSCi4wLWY1tm9vMZYuabgmbG2Uw8D9ZGuM8RhDzA/exec';   // ex.: https://script.google.com/macros/s/XXXX/exec
+const API_URL = 'COLE_AQUI_O_LINK_DO_NOVO_APPS_SCRIPT';   // ex.: https://script.google.com/macros/s/XXXX/exec
 const LIMITE_PRECISAO_M = 1000;   // pior que isso = localização aproximada (não envia)
 const RE_CTRC = /^([A-Z]{3})(\d{1,9})-?(\d)$/;
 
@@ -173,6 +230,8 @@ let listas = ls.get(K.LISTAS, { ocorrencias: [], unidades: [] });
 let unidadeSel = null;   // nada pré-selecionado: o motorista escolhe a cada baixa
 let ocoSel = null;
 let ctrcValido = null;
+let chaveLida = null;      // DACTE lido pelo leitor: { chave, numero, serie, mes }
+let scanner = null, scannerRodando = false;
 let gpsAtual = null, gpsPromessa = null;
 
 /* ===================== SERVIDOR ===================== */
@@ -199,6 +258,7 @@ function mostrar(id) {
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
   $(id).classList.add('ativa');
   window.scrollTo(0, 0);
+  if (id === 't-scan') iniciarCamera(); else pararCamera();
 }
 function carregando(on, txt) { $('carregando').textContent = txt || 'Aguarde…'; $('carregando').style.display = on ? 'flex' : 'none'; }
 function erro(id, msg) { const el = $(id); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
@@ -241,14 +301,16 @@ $('ctrc').addEventListener('input', (e) => {
 });
 $('ctrc').addEventListener('blur', () => { if (ctrcValido) $('ctrc').value = ctrcValido; });
 
-async function verificarDuplicidade(ctrc) {
-  const local = fila().find(i => i.ctrc === ctrc);
-  if (local) return avisoDup('Este CTRC já foi registrado neste aparelho (' + local.ocorrencia + ') e aguarda envio.');
+async function verificarDuplicidade(doc) {
+  const nome = doc.length === 44 ? 'CT-e' : 'CTRC';
+  const atual = () => (chaveLida ? chaveLida.chave : ctrcValido) === doc;
+  const local = fila().find(i => i.ctrc === doc || i.chave === doc);
+  if (local) return avisoDup('Este ' + nome + ' já foi registrado neste aparelho (' + local.ocorrencia + ') e aguarda envio.');
   if (!navigator.onLine) return;
   try {
-    const ja = await api('consultarCtrc', ctrc);
-    if (ja.length && ctrcValido === ctrc)
-      avisoDup('Atenção: este CTRC já tem registro — ' + ja.map(b => b.ocorrencia + ' em ' + b.quando + ' (' + b.unidade + ')').join('; '));
+    const ja = await api('consultarCtrc', doc);
+    if (ja.length && atual())
+      avisoDup('Atenção: este ' + nome + ' já tem registro — ' + ja.map(b => b.ocorrencia + ' em ' + b.quando + ' (' + b.unidade + ')').join('; '));
   } catch (e) {}
 }
 function avisoDup(msg) { $('dup-aviso').textContent = msg; $('dup-aviso').style.display = 'block'; }
@@ -336,7 +398,7 @@ $('sel-busca').addEventListener('keydown', (e) => {   // Enter escolhe o primeir
 $('sel-limpar').onclick = () => { $('sel-busca').value = ''; pintarSeletor(); $('sel-busca').focus(); };
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharSeletor(); });
 
-function atualizarBotao() { $('btn-enviar').disabled = !(ctrcValido && unidadeSel && ocoSel); }
+function atualizarBotao() { $('btn-enviar').disabled = !((chaveLida || ctrcValido) && unidadeSel && ocoSel); }
 
 /* ===================== LOCALIZAÇÃO (obrigatória e precisa) ===================== */
 function obterLocalizacao(maxMs) {
@@ -390,7 +452,7 @@ $('btn-gps').onclick = async () => {
   try {
     const g = await obterLocalizacao(20000);
     if (g.precisao > LIMITE_PRECISAO_M) throw { code: 'aprox', precisao: g.precisao };
-    gpsAtual = g; abrirFormulario();
+    gpsAtual = g; abrirLeitor();
   } catch (e) {
     erro('gps-msg', e.code === 'aprox'
       ? 'Sua localização está aproximada (±' + e.precisao + ' m). Ative "Usar localização precisa" nas configurações de localização do celular e permita localização precisa para este app.'
@@ -421,7 +483,8 @@ $('btn-enviar').onclick = async () => {
   }
   const item = {
     id: uuid(), dispositivo,
-    ctrc: ctrcValido, unidade: unidadeSel,
+    chave: chaveLida ? chaveLida.chave : '', ctrc: chaveLida ? '' : ctrcValido,
+    forma: chaveLida ? 'LEITOR' : 'DIGITADO', unidade: unidadeSel,
     ocorrencia: ocoSel.c, ocorrenciaDesc: ocoSel.d,
     registradoEm: new Date().toISOString(),
     lat: gps.lat, lng: gps.lng, precisao: gps.precisao,
@@ -461,7 +524,8 @@ async function sincronizar() {
 function pintarResumo() {
   const hoje = new Date().toDateString(), h = ls.get(K.HOJE, { d: hoje, n: 0 });
   const n = h.d === hoje ? h.n : 0, pend = fila().length;
-  $('resumo').textContent = n + ' enviadas hoje · ' + pend + (pend === 1 ? ' pendente' : ' pendentes') + (navigator.onLine ? '' : ' · sem internet');
+  const txt = n + ' enviadas hoje · ' + pend + (pend === 1 ? ' pendente' : ' pendentes') + (navigator.onLine ? '' : ' · sem internet');
+  document.querySelectorAll('.resumo').forEach(el => el.textContent = txt);
 }
 window.addEventListener('online', () => { sincronizar(); atualizarListas(); });
 window.addEventListener('offline', pintarResumo);
@@ -478,7 +542,7 @@ function mostrarFim(item, r) {
   const hora = new Date(item.registradoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   $('fim-sub').textContent = ok ? 'Registrada às ' + hora + ' com localização (±' + item.precisao + ' m)'
                          : pend ? 'Será enviada automaticamente quando houver internet' : item.erro;
-  $('fim-ctrc').textContent = item.ctrc;
+  $('fim-ctrc').textContent = item.chave ? descreverChave(item.chave) : 'CTRC ' + item.ctrc;
   $('fim-uni').textContent = item.unidade;
   $('fim-oco').textContent = item.ocorrencia + ' - ' + item.ocorrenciaDesc;
   $('fim-status').innerHTML = ok ? '<span class="tag" style="background:#dcfce7;color:#166534">ENVIADO</span> &nbsp;aguardando SSW'
@@ -488,26 +552,176 @@ function mostrarFim(item, r) {
   $('btn-nova').dataset.manter = ok || pend ? '' : '1';
   mostrar('t-fim');
 }
+function limparFormulario() {
+  $('ctrc').value = ''; ctrcValido = null; chaveLida = null; ocoSel = null; unidadeSel = null;
+  $('ctrc').classList.remove('ok'); $('ctrc-dica').className = 'dica'; $('ctrc-dica').textContent = '3 letras, número, hífen e dígito';
+  $('dup-aviso').style.display = 'none';
+}
 $('btn-nova').onclick = () => {
-  if (!$('btn-nova').dataset.manter) {               // nova baixa: limpa CTRC, unidade e ocorrência
-    $('ctrc').value = ''; ctrcValido = null; ocoSel = null; unidadeSel = null;
-    $('ctrc').classList.remove('ok'); $('ctrc-dica').className = 'dica'; $('ctrc-dica').textContent = '3 letras, número, hífen e dígito';
-    $('dup-aviso').style.display = 'none';
-  }
-  abrirFormulario();
+  if ($('btn-nova').dataset.manter) return abrirFormulario();   // recusada: volta ao formulário para corrigir
+  limparFormulario();                                         // nova baixa: começa de novo pelo leitor
+  abrirLeitor();
 };
 
+function abrirLeitor() {
+  pintarResumo(); erro('scan-erro');
+  mostrar('t-scan');
+  buscarGps();
+}
 function abrirFormulario() {
   pintarResumo(); pintarUnidades(); pintarLista(); atualizarBotao(); erro('form-erro');
+  $('bloco-chave').style.display = chaveLida ? '' : 'none';
+  $('bloco-ctrc').style.display = chaveLida ? 'none' : '';
+  if (chaveLida) { $('chave-titulo').textContent = descreverChave(chaveLida.chave); $('chave-num').textContent = chaveLida.chave; }
   mostrar('t-form');
   buscarGps();
-  setTimeout(() => { if (!ctrcValido) $('ctrc').focus(); }, 150);
+  setTimeout(() => { if (!chaveLida && !ctrcValido) $('ctrc').focus(); }, 150);
+}
+$('btn-reler').onclick = () => { chaveLida = null; $('dup-aviso').style.display = 'none'; abrirLeitor(); };
+$('btn-voltar-leitor').onclick = () => { abrirLeitor(); };
+$('btn-digitar').onclick = () => { chaveLida = null; $('dup-aviso').style.display = 'none'; abrirFormulario(); };
+
+/* ===================== LEITOR DE CÓDIGO DE BARRAS (só DACTE) =====================
+ * Lê a chave de acesso do CT-e (44 números) do código de barras ou do QR Code do DACTE.
+ * Outros códigos (ex.: o código interno do SSW impresso no SUBCONTRATO) são recusados.
+ */
+const UFS = ['11','12','13','14','15','16','17','21','22','23','24','25','26','27','28','29','31','32','33','35','41','42','43','50','51','52','53'];
+function extrairChave(lido) {
+  const t = String(lido || '').trim();
+  const m = t.match(/chCTe=(\d{44})/i);
+  if (m) return m[1];
+  const n = t.replace(/\D/g, '');
+  return n.length === 44 && /^[\d\s.]+$/.test(t) ? n : null;
+}
+function validarChave(ch) {
+  let peso = 2, soma = 0;
+  for (let i = 42; i >= 0; i--) { soma += Number(ch[i]) * peso; peso = peso === 9 ? 2 : peso + 1; }
+  const resto = soma % 11, dv = resto < 2 ? 0 : 11 - resto;
+  if (dv !== Number(ch[43])) return { ok: false, erro: 'Leitura falhou (dígito verificador). Aproxime e tente de novo.' };
+  if (UFS.indexOf(ch.slice(0, 2)) < 0) return { ok: false, erro: 'Chave inválida.' };
+  const modelo = ch.slice(20, 22);
+  if (modelo === '55') return { ok: false, erro: 'Este código é de uma NF-e (DANFE). Leia o código do DACTE.' };
+  if (modelo !== '57' && modelo !== '67') return { ok: false, erro: 'Este código não é de um CT-e. Leia o código do DACTE.' };
+  return { ok: true, chave: ch, serie: Number(ch.slice(22, 25)), numero: ch.slice(25, 34), mes: ch.slice(4, 6) + '/20' + ch.slice(2, 4) };
+}
+function descreverChave(ch) { return 'CT-e ' + ch.slice(25, 34) + ' · Série ' + Number(ch.slice(22, 25)); }
+
+function novoScanner() {
+  if (!scanner) scanner = new Html5Qrcode('leitor-oculto', {
+    formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.QR_CODE], verbose: false });
+  return scanner;
+}
+// Câmera ao vivo na resolução cheia (o código do CT-e é longo e fino). Dois leitores juntos:
+// o nativo do Android (quando suporta CODE-128) e o ZXing (biblioteca), em recortes da área da mira.
+let stream = null, video = null, loopAtivo = false, detectorNativo = null, cameras = [], cameraIdx = -1;
+const prontoNativo = (async () => {
+  try {
+    if (!('BarcodeDetector' in window)) return;
+    const fmts = await BarcodeDetector.getSupportedFormats();
+    if (fmts.indexOf('code_128') >= 0) detectorNativo = new BarcodeDetector({ formats: ['code_128', 'qr_code'] });
+  } catch (e) { detectorNativo = null; }
+})();
+async function listarCamerasTraseiras() {
+  try {
+    const todas = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    const tras = todas.filter(d => /back|rear|traseira|environment/i.test(d.label));
+    cameras = tras.length ? tras : todas;
+  } catch (e) { cameras = []; }
+}
+async function iniciarCamera() {
+  if (scannerRodando) return;
+  await prontoNativo;
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('sem câmera');
+    const vc = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+    if (cameraIdx >= 0 && cameras[cameraIdx]) vc.deviceId = { exact: cameras[cameraIdx].deviceId };
+    else vc.facingMode = { ideal: 'environment' };
+    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: vc });
+    if (!$('t-scan').classList.contains('ativa')) { stream.getTracks().forEach(t => t.stop()); stream = null; return; }
+    if (!video) {
+      video = document.createElement('video');
+      video.setAttribute('playsinline', ''); video.muted = true;
+      video.style.width = '100%'; video.style.display = 'block';
+      $('reader').innerHTML = '<div class="mira"></div>'; $('reader').prepend(video);
+    }
+    video.srcObject = stream; await video.play();
+    try {   // foco contínuo e um pouco de zoom: o celular fica mais longe do papel e foca melhor
+      const track = stream.getVideoTracks()[0], cap = track.getCapabilities ? track.getCapabilities() : {}, adv = {};
+      if (cap.focusMode && cap.focusMode.indexOf('continuous') >= 0) adv.focusMode = 'continuous';
+      if (cap.zoom) adv.zoom = Math.min(cap.zoom.max, Math.max(cap.zoom.min, 1.6));
+      if (Object.keys(adv).length) await track.applyConstraints({ advanced: [adv] });
+    } catch (e) {}
+    if (!cameras.length) await listarCamerasTraseiras();
+    $('btn-trocar').style.display = cameras.length > 1 ? '' : 'none';
+    $('diag').textContent = 'Câmera ' + video.videoWidth + '×' + video.videoHeight + ' · leitor ' + (detectorNativo ? 'nativo + ZXing' : 'ZXing');
+    scannerRodando = true; loopAtivo = true;
+    lerQuadros();
+  } catch (e) {
+    erro('scan-erro', 'Não foi possível usar a câmera deste celular. Permita o acesso à câmera no navegador ou toque em "Digitar CTRC".');
+  }
+}
+async function pararCamera() {
+  loopAtivo = false; scannerRodando = false;
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+}
+$('btn-trocar').onclick = async () => {
+  if (!cameras.length) await listarCamerasTraseiras();
+  if (!cameras.length) return;
+  cameraIdx = (cameraIdx + 1) % cameras.length;
+  await pararCamera(); await espera(200); iniciarCamera();
+};
+const espera = (ms) => new Promise(r => setTimeout(r, ms));
+const RECORTES = [[0.9, 0.4], [1, 0.6], [0.75, 0.28]];
+async function lerQuadros() {
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true });
+  let quadro = 0;
+  while (loopAtivo) {
+    if (video.readyState >= 2 && video.videoWidth) {
+      try {
+        const w = video.videoWidth, h = video.videoHeight;
+        const [rw, rh] = RECORTES[(quadro++) % RECORTES.length];
+        const cw = Math.round(w * rw), ch = Math.round(h * rh);
+        cv.width = cw; cv.height = ch;
+        ctx.drawImage(video, (w - cw) / 2, (h - ch) / 2, cw, ch, 0, 0, cw, ch);
+        if (detectorNativo) { try { for (const c of await detectorNativo.detect(cv)) aoLer(c.rawValue); } catch (e) {} }
+        if (!loopAtivo) break;
+        if (!detectorNativo || quadro % 2 === 0) {
+          const blob = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.92));
+          try { aoLer(await novoScanner().scanFile(new File([blob], 'q.jpg', { type: 'image/jpeg' }), false)); } catch (e) {}
+        }
+        await espera(60);
+      } catch (e) { await espera(300); }
+    } else { await espera(100); }
+  }
+}
+let travado = false, ultimoAviso = 0;
+function aoLer(texto) {
+  if (travado || !loopAtivo) return;
+  const chave = extrairChave(texto);
+  if (!chave) {   // leu um código que não é do DACTE (ex.: código interno do SSW)
+    if (Date.now() - ultimoAviso > 2500) {
+      ultimoAviso = Date.now();
+      erro('scan-erro', 'Este código não é do DACTE (lido: ' + String(texto).slice(0, 30) + '). Procure o código de barras do DACTE ou toque em "Digitar CTRC".');
+      if (navigator.vibrate) navigator.vibrate([60, 60, 60]);
+    }
+    return;
+  }
+  const v = validarChave(chave);
+  if (!v.ok) {
+    if (Date.now() - ultimoAviso > 2500) { ultimoAviso = Date.now(); erro('scan-erro', v.erro); }
+    return;
+  }
+  travado = true; setTimeout(() => travado = false, 1500);
+  if (navigator.vibrate) navigator.vibrate(90);
+  chaveLida = v; ctrcValido = null; $('dup-aviso').style.display = 'none';
+  abrirFormulario();
+  verificarDuplicidade(v.chave);
 }
 
 /* ===================== INÍCIO ===================== */
 (async function iniciar() {
   pintarUnidades(); pintarLista();
-  if (await exigirLocalizacao()) abrirFormulario();
+  if (await exigirLocalizacao()) abrirLeitor();
   await atualizarListas();
   sincronizar();
 })();
@@ -515,6 +729,52 @@ function abrirFormulario() {
 /* ===================== APP INSTALÁVEL / OFFLINE ===================== */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+// pede ao navegador para não apagar os dados do app (baixas pendentes e listas) quando faltar espaço
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+const UA = navigator.userAgent || '';
+const ehIOS = /iPhone|iPad|iPod/i.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const instalado = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const navegadorInterno = /WhatsApp|FBAN|FBAV|Instagram|Line\/|; wv\)/i.test(UA);   // WhatsApp, Facebook, Instagram, webviews
+const K_INSTALAR = 'erv_instalar_adiado';
+let pedidoInstalacao = null;
+
+// Aberto dentro do WhatsApp ou outro app: avisa para abrir no Chrome/Safari (senão não funciona offline)
+if (navegadorInterno) {
+  $('alerta-nav').innerHTML = '<b>Abra no ' + (ehIOS ? 'Safari' : 'Chrome') + '.</b> Este link foi aberto dentro de outro aplicativo (ex.: WhatsApp), onde o app não funciona sem internet. Toque em ⋮ (ou ⋯) e escolha <b>Abrir no ' + (ehIOS ? 'Safari' : 'Chrome') + '</b>.';
+  $('alerta-nav').classList.add('ver');
+}
+
+function mostrarInstalar(texto, comBotao) {
+  if (instalado() || navegadorInterno) return;
+  const adiado = ls.get(K_INSTALAR, 0);
+  if (adiado && Date.now() - adiado < 3 * 864e5) return;      // "agora não" vale por 3 dias
+  if (texto) $('instalar-txt').innerHTML = texto;
+  $('btn-instalar').style.display = comBotao ? '' : 'none';
+  $('instalar').classList.add('ver');
+}
+function esconderInstalar() { $('instalar').classList.remove('ver'); }
+
+// Android/Chrome: o navegador avisa quando o app pode ser instalado; guardamos o pedido para o botão
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  pedidoInstalacao = e;
+  mostrarInstalar(null, true);
+});
+$('btn-instalar').onclick = async () => {
+  if (!pedidoInstalacao) return;
+  pedidoInstalacao.prompt();
+  try { await pedidoInstalacao.userChoice; } catch (e) {}
+  pedidoInstalacao = null;
+  esconderInstalar();
+};
+$('instalar-fechar').onclick = () => { ls.set(K_INSTALAR, Date.now()); esconderInstalar(); };
+window.addEventListener('appinstalled', () => { pedidoInstalacao = null; esconderInstalar(); });
+
+// iPhone: não existe botão de instalação automática; mostra o passo a passo
+if (ehIOS && !instalado()) {
+  mostrarInstalar('<b>Instale o app:</b> toque em <b>Compartilhar</b> (quadrado com seta) e depois em <b>Adicionar à Tela de Início</b>.', false);
 }
 </script>
 </body>
