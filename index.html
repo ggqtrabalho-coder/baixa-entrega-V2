@@ -152,7 +152,7 @@
 <section id="t-scan" class="tela">
   <div class="top"><b>Baixa de Entrega</b><small class="resumo">—</small></div>
   <div class="cam">
-    <p>Aponte para o código de barras do <b>DACTE</b>, dentro da moldura</p>
+    <p>Aponte para o código de barras do <b>DACTE</b> ou do <b>Subcontrato</b></p>
     <div id="reader"></div>
     <div id="diag"></div>
     <div id="scan-erro" class="erro" style="width:100%;max-width:420px"></div>
@@ -171,7 +171,7 @@
   <div class="corpo">
     <div id="listas-erro" class="erro" onclick="atualizarListas()"></div>
     <div id="bloco-chave" style="display:none">
-      <div class="lbl" style="margin-bottom:6px">DACTE lido</div>
+      <div class="lbl" style="margin-bottom:6px" id="chave-rotulo">Documento lido</div>
       <div class="doc"><div class="t"><b id="chave-titulo"></b><small id="chave-num"></small></div><button type="button" class="link" id="btn-reler">Ler outro</button></div>
     </div>
     <div id="bloco-ctrc">
@@ -231,7 +231,7 @@
 <script>
 /* ===================== CONFIGURAÇÃO ===================== */
 // URL da implantação do Apps Script (Implantar > Gerenciar implantações > URL do app da Web)
-const API_URL = 'https://script.google.com/macros/s/AKfycbzA5zdQBMLA7B8JI7eAr1qG8YFkBHgSCi4wLWY1tm9vMZYuabgmbG2Uw8D9ZGuM8RhDzA/exec';   // ex.: https://script.google.com/macros/s/XXXX/exec
+const API_URL = 'COLE_AQUI_O_LINK_DO_NOVO_APPS_SCRIPT';   // ex.: https://script.google.com/macros/s/XXXX/exec
 const LIMITE_PRECISAO_M = 1000;   // pior que isso = localização aproximada (não envia)
 const RE_CTRC = /^([A-Z]{3})(\d{1,9})-?(\d)$/;
 
@@ -251,7 +251,7 @@ let listas = ls.get(K.LISTAS, { ocorrencias: [], unidades: [] });
 let unidadeSel = null;   // nada pré-selecionado: o motorista escolhe a cada baixa
 let ocoSel = null;
 let ctrcValido = null;
-let chaveLida = null;      // DACTE lido pelo leitor: { chave, numero, serie, mes }
+let chaveLida = null;      // documento lido pelo leitor: { tipo: 'DACTE'|'SUBCONTRATO', chave, ... }
 let scanner = null, scannerRodando = false;
 let gpsAtual = null, gpsPromessa = null;
 
@@ -323,7 +323,7 @@ $('ctrc').addEventListener('input', (e) => {
 $('ctrc').addEventListener('blur', () => { if (ctrcValido) $('ctrc').value = ctrcValido; });
 
 async function verificarDuplicidade(doc) {
-  const nome = doc.length === 44 ? 'CT-e' : 'CTRC';
+  const nome = doc.length === 44 ? 'CT-e' : /^\d+$/.test(doc) ? 'subcontrato' : 'CTRC';
   const atual = () => (chaveLida ? chaveLida.chave : ctrcValido) === doc;
   const local = fila().find(i => i.ctrc === doc || i.chave === doc);
   if (local) return avisoDup('Este ' + nome + ' já foi registrado neste aparelho (' + local.ocorrencia + ') e aguarda envio.');
@@ -505,7 +505,7 @@ $('btn-enviar').onclick = async () => {
   const item = {
     id: uuid(), dispositivo,
     chave: chaveLida ? chaveLida.chave : '', ctrc: chaveLida ? '' : ctrcValido,
-    forma: chaveLida ? 'LEITOR' : 'DIGITADO', unidade: unidadeSel,
+    forma: chaveLida ? 'LEITOR' : 'DIGITADO', tipoDoc: chaveLida ? chaveLida.tipo : 'CTRC', unidade: unidadeSel,
     ocorrencia: ocoSel.c, ocorrenciaDesc: ocoSel.d,
     registradoEm: new Date().toISOString(),
     lat: gps.lat, lng: gps.lng, precisao: gps.precisao,
@@ -593,7 +593,11 @@ function abrirFormulario() {
   pintarResumo(); pintarUnidades(); pintarLista(); atualizarBotao(); erro('form-erro');
   $('bloco-chave').style.display = chaveLida ? '' : 'none';
   $('bloco-ctrc').style.display = chaveLida ? 'none' : '';
-  if (chaveLida) { $('chave-titulo').textContent = descreverChave(chaveLida.chave); $('chave-num').textContent = chaveLida.chave; }
+  if (chaveLida) {
+    $('chave-rotulo').textContent = chaveLida.tipo === 'SUBCONTRATO' ? 'Subcontrato lido' : 'DACTE lido';
+    $('chave-titulo').textContent = descreverChave(chaveLida.chave);
+    $('chave-num').textContent = chaveLida.tipo === 'SUBCONTRATO' ? 'Código de barras do subcontrato (SSW)' : chaveLida.chave;
+  }
   mostrar('t-form');
   buscarGps();
   setTimeout(() => { if (!chaveLida && !ctrcValido) $('ctrc').focus(); }, 150);
@@ -625,7 +629,11 @@ function validarChave(ch) {
   if (modelo !== '57' && modelo !== '67') return { ok: false, erro: 'Este código não é de um CT-e. Leia o código do DACTE.' };
   return { ok: true, chave: ch, serie: Number(ch.slice(22, 25)), numero: ch.slice(25, 34), mes: ch.slice(4, 6) + '/20' + ch.slice(2, 4) };
 }
-function descreverChave(ch) { return 'CT-e ' + ch.slice(25, 34) + ' · Série ' + Number(ch.slice(22, 25)); }
+function descreverChave(ch) {
+  return ch.length === 44 ? 'CT-e ' + ch.slice(25, 34) + ' · Série ' + Number(ch.slice(22, 25)) : 'Subcontrato ' + ch;
+}
+// Código de barras do SUBCONTRATO (gerado pelo SSW): só números, ex.: 8223190030658767 (16 dígitos).
+const RE_SUBCONTRATO = /^\d{12,20}$/;
 
 function novoScanner() {
   if (!scanner) scanner = new Html5Qrcode('leitor-oculto', {
@@ -719,10 +727,19 @@ let travado = false, ultimoAviso = 0;
 function aoLer(texto) {
   if (travado || !loopAtivo) return;
   const chave = extrairChave(texto);
-  if (!chave) {   // leu um código que não é do DACTE (ex.: código interno do SSW)
+  const bruto = String(texto || '').trim();
+  if (!chave && RE_SUBCONTRATO.test(bruto)) {   // código de barras do SUBCONTRATO
+    travado = true; setTimeout(() => travado = false, 1500);
+    if (navigator.vibrate) navigator.vibrate(90);
+    chaveLida = { ok: true, tipo: 'SUBCONTRATO', chave: bruto }; ctrcValido = null; $('dup-aviso').style.display = 'none';
+    abrirFormulario();
+    verificarDuplicidade(bruto);
+    return;
+  }
+  if (!chave) {   // leu um código que não é do DACTE nem do subcontrato
     if (Date.now() - ultimoAviso > 2500) {
       ultimoAviso = Date.now();
-      erro('scan-erro', 'Este código não é do DACTE (lido: ' + String(texto).slice(0, 30) + '). Procure o código de barras do DACTE ou toque em "Digitar CTRC".');
+      erro('scan-erro', 'Este código não é do DACTE nem do Subcontrato (lido: ' + bruto.slice(0, 30) + '). Procure o código certo ou toque em "Digitar CTRC".');
       if (navigator.vibrate) navigator.vibrate([60, 60, 60]);
     }
     return;
@@ -734,7 +751,7 @@ function aoLer(texto) {
   }
   travado = true; setTimeout(() => travado = false, 1500);
   if (navigator.vibrate) navigator.vibrate(90);
-  chaveLida = v; ctrcValido = null; $('dup-aviso').style.display = 'none';
+  chaveLida = Object.assign({ tipo: 'DACTE' }, v); ctrcValido = null; $('dup-aviso').style.display = 'none';
   abrirFormulario();
   verificarDuplicidade(v.chave);
 }
